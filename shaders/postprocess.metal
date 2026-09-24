@@ -11,7 +11,15 @@ struct PostUniforms {
     float time;
 };
 
-// MakeUp's Custom Sigmoid Tonemap
+vertex PostVertexOut prisma_postprocess_vs(uint vertexId [[vertex_id]]) {
+    const float2 positions[3] = { float2(-1.0,  1.0), float2( 3.0,  1.0), float2(-1.0, -3.0) };
+    const float2 uvs[3] = { float2(0.0, 0.0), float2(2.0, 0.0), float2(0.0, 2.0) };
+    PostVertexOut out;
+    out.position = float4(positions[vertexId], 0.0, 1.0);
+    out.uv = uvs[vertexId];
+    return out;
+}
+
 inline float3 makeupTonemap(float3 color) {
     color = 1.4f * color;
     float3 powerBase = pow(color, float3(2.5f)) + 1.0f;
@@ -27,14 +35,9 @@ fragment float4 prisma_postprocess_fs(
     constant PostUniforms& u [[buffer(0)]]
 ) {
     float4 hdrColor = hdrTex.sample(smp, in.uv);
-    
-    // Apply MakeUp Tonemapping
     float3 ldrColor = makeupTonemap(hdrColor.rgb);
-    
-    // Simple Vignette
     float2 d = in.uv - 0.5f;
     float dist = length(d);
     ldrColor *= smoothstep(0.8f, 0.3f, dist);
-
     return float4(ldrColor, 1.0f);
 }

@@ -14,16 +14,19 @@ struct DeferredUniforms {
     float reflectionPtShadows; float reflectionDirShadows; float vxaoInReflections; float cloudsEnabled;
 };
 
-// ---------------------------------------------------------
-// MAKEUP LIGHTING INTEGRATION
-// ---------------------------------------------------------
-// For simplicity in this Proof of Concept, we define a basic MakeUp Light formula here.
-// In a full implementation, this would #include the metal_port headers.
+vertex DeferredVertexOut prisma_deferred_vs(uint vertexId [[vertex_id]]) {
+    const float2 positions[3] = { float2(-1.0,  1.0), float2( 3.0,  1.0), float2(-1.0, -3.0) };
+    const float2 uvs[3] = { float2(0.0, 0.0), float2(2.0, 0.0), float2(0.0, 2.0) };
+    DeferredVertexOut out;
+    out.position = float4(positions[vertexId], 0.0, 1.0);
+    out.uv = uvs[vertexId];
+    return out;
+}
 
 inline float3 calculateMakeUpLighting(float3 albedo, float3 normal, float3 lightDir, float3 skyColor, float3 sunColor) {
     float nDotL = max(dot(normal, lightDir), 0.0f);
     float wrapLight = max(dot(normal, lightDir) * 0.5f + 0.5f, 0.0f);
-    float3 directDiffuse = sunColor * nDotL; // Assume unshadowed for PoC
+    float3 directDiffuse = sunColor * nDotL;
     float3 ambientDiffuse = float3(0.05f) + (skyColor * wrapLight * 0.3f);
     return albedo * (directDiffuse + ambientDiffuse);
 }
@@ -51,17 +54,12 @@ fragment float4 prisma_deferred_fs(
     float3 normal = normalData.xyz * 2.0f - 1.0f;
     float4 lightData = lightDataTex.sample(smp, in.uv);
 
-    // MakeUp Light direction (Sun/Moon)
     float sunRad = u.sunAngle;
     float3 lightDir = normalize(float3(sin(sunRad), cos(sunRad), 0.5f));
-
-    // MakeUp Colors
     float3 skyColor = float3(u.skyR, u.skyG, u.skyB);
     float3 sunColor = float3(1.0f, 0.9f, 0.8f);
 
     float3 finalColor = calculateMakeUpLighting(albedo.rgb, normal, lightDir, skyColor, sunColor);
-
-    // Add Block Light (Torch)
     float blockLight = lightData.y;
     finalColor += albedo.rgb * float3(1.0f, 0.6f, 0.3f) * blockLight * blockLight * 2.0f;
 
